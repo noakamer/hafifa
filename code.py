@@ -12,7 +12,6 @@ import requests
 
 
 class Watcher:
-    # DIRECTORY_TO_WATCH = "/Users/adir1/Desktop/noa/"
     DIRECTORY_TO_WATCH = "/home/firstuser/allpics/"
 
     def __init__(self):
@@ -25,7 +24,6 @@ class Watcher:
         self.observer.start()
         try:
             while True:
-                print("hi")
                 time.sleep(5)
         except:
             self.observer.stop()
@@ -36,8 +34,6 @@ class Watcher:
 
 def full_file_name(event):
     full_path_of_the_file = str(event)
-    # splited_path = full_path_of_the_file.split('/')
-    # file_name = splited_path[-1]
     file_name = os.path.basename(full_path_of_the_file)
     splited_name = file_name.split('.')
     return splited_name[0]
@@ -46,26 +42,19 @@ def full_file_name(event):
 def before_running_client(path):
     url = 'http://localhost:80/'
     r = redis.Redis(host='127.0.0.1', port=6379)
-    # url = 'http://52.149.123.176:8000/'
     for img in os.listdir(path):
         full_path = os.path.join(path, img)
         file_name = full_file_name(full_path)[:-2]
         is_first_file_or_second = full_file_name(full_path)[-1]
         if is_first_file_or_second == 'a':
-            # should i put the full path instead of file name in value?
             r.set(file_name, str(full_path).split('/')[-1])
-            # r.expire(file_name, 60)
         elif is_first_file_or_second == 'b':
-            # should try and catch because there is a chance the 'a' file doesn't exist
             url = 'http://localhost:80/'
             second_file_name = r.get(file_name)
             re = os.path.basename(str(full_path))
-            # re = str(full_path).split('/')[-1]
-#            basic_path = str(full_path).removesuffix(re)
             basic_path = str(full_path)[:-len(re)]
             second_file_path = os.path.join(basic_path, second_file_name.decode('ascii'))
             file_list = [('file', open(str(full_path), 'rb')), ('file', open((second_file_path), 'rb'))]
-#            print(full_path)
             response = requests.post(url=url, files=file_list)
             print(response.status_code)
             print(response)
@@ -75,13 +64,11 @@ def before_running_client(path):
 
 def send_log_to_elastic(message):
     es = Elasticsearch(hosts=['http://20.54.249.197:9200'])
-#    print(es.info())
     doc = {
         'message': message,
         'timestamp': datetime.now(),
     }
     res = es.index(index="http-logs", body=doc)
-#    print(res)
 
 
 class Handler(FileSystemEventHandler):
@@ -92,35 +79,26 @@ class Handler(FileSystemEventHandler):
             return None
 
         elif event.event_type == 'created':
-            # Take any action here when a file is first created.
             print("Received created event - %s." % event.src_path)
             send_log_to_elastic('new file got into pure-ftpd server folder')
             file_name = full_file_name(event.src_path)[:-2]
             is_first_file_or_second = full_file_name(event.src_path)[-1]
             r = redis.Redis(host='127.0.0.1', port=6379)
             if is_first_file_or_second == 'a':
-                # should i put the full path instead of file name in value?
                 r.setex(file_name, 60, str(event.src_path).split('/')[-1])
-#                r.execute_command()
-                # r.expire(file_name, 60)
             elif is_first_file_or_second == 'b':
-                # should try and catch because there is a chance the 'a' file doesn't exist
                 url = 'http://localhost:80/'
                 second_file_name = r.get(file_name)
                 re = str(event.src_path).split('/')[-1]
                 basic_path = str(event.src_path)[:-len(re)]
                 second_file_path = os.path.join(basic_path, second_file_name.decode('ascii'))
-#                print(second_file_path)
                 file_list = [('file', open(second_file_path, 'rb')), ('file', open(str(event.src_path), 'rb'))]
                 response = requests.post(url=url, files=file_list)
                 print(response.status_code)
                 if response.status_code == 200:
-                    print('in200')
                     send_log_to_elastic("the files sent successfully")
-                    print("the files sent successfully")
                 else:
                     send_log_to_elastic("the files didn't sent successfully")
-                    print("the files didn't sent successfully")
                 os.remove(str(event.src_path))
                 os.remove(second_file_path)
 
@@ -129,5 +107,4 @@ if __name__ == '__main__':
     w = Watcher()
     executor = ProcessPoolExecutor(5)
     future = executor.submit(w.run(), ("Completed"))
-    print(future.done())
 
