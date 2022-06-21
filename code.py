@@ -7,11 +7,13 @@ import os
 from elasticsearch import Elasticsearch
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import as_completed
+#shouldnt put line 11
 from requests import get
 import requests
 
 
 class Watcher:
+    #save this as global
     DIRECTORY_TO_WATCH = "/home/firstuser/allpics/"
 
     def __init__(self):
@@ -20,6 +22,7 @@ class Watcher:
     def run(self):
         before_running_client(self.DIRECTORY_TO_WATCH)
         event_handler = Handler()
+        # why recursive? what is the best option?
         self.observer.schedule(event_handler, self.DIRECTORY_TO_WATCH, recursive=True)
         self.observer.start()
         try:
@@ -31,18 +34,20 @@ class Watcher:
 
         self.observer.join()
 
-
+#change def name
 def full_file_name(event):
     full_path_of_the_file = str(event)
     file_name = os.path.basename(full_path_of_the_file)
     splited_name = file_name.split('.')
     return splited_name[0]
 
-
+#change def name
 def before_running_client(path):
+    #save url and redis data as global
     url = 'http://localhost:80/'
     r = redis.Redis(host='127.0.0.1', port=6379)
     for img in os.listdir(path):
+        #change to good names
         full_path = os.path.join(path, img)
         file_name = full_file_name(full_path)[:-2]
         is_first_file_or_second = full_file_name(full_path)[-1]
@@ -58,6 +63,7 @@ def before_running_client(path):
             response = requests.post(url=url, files=file_list)
             print(response.status_code)
             print(response)
+            #make lines 67,68 function
             os.remove(str(full_path))
             os.remove(second_file_path)
 
@@ -84,6 +90,7 @@ class Handler(FileSystemEventHandler):
             file_name = full_file_name(event.src_path)[:-2]
             is_first_file_or_second = full_file_name(event.src_path)[-1]
             r = redis.Redis(host='127.0.0.1', port=6379)
+            #SHOULD NOT LEHISTAMEH THAT A BECOMES BEFURE B
             if is_first_file_or_second == 'a':
                 r.setex(file_name, 60, str(event.src_path).split('/')[-1])
             elif is_first_file_or_second == 'b':
