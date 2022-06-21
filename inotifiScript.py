@@ -23,7 +23,7 @@ class Watcher:
     def run(self):
         event_handler = Handler()
         # why recursive? what is the best option?
-        self.observer.schedule(event_handler, self.DIRECTORY_TO_WATCH, recursive=True)
+        self.observer.schedule(event_handler, DIRECTORY_TO_WATCH, recursive=True)
         self.observer.start()
         try:
             while True:
@@ -60,7 +60,7 @@ def get_full_path_and_do_everything(img_full_path):
     file_name_without_suffix = get_file_name_with_suffix(img_full_path)[:-2]
     # return 0 if not exist and 1 if exist
     if redis_connection.exists(file_name_without_suffix) == 0:
-        redis_connection.set(file_name_without_suffix, str(img_full_path).split('/')[-1])
+        redis_connection.setex(file_name_without_suffix,60, str(img_full_path).split('/')[-1])
     else:
         second_file_name = redis_connection.get(file_name_without_suffix)
         is_first_file_or_second = get_file_name_with_suffix(img_full_path)[-1]
@@ -70,7 +70,10 @@ def get_full_path_and_do_everything(img_full_path):
         else:
             file_list = [('file', open(second_file_path, 'rb')), ('file', open(str(img_full_path), 'rb'))]
         response = requests.post(url=HAPROXY_URL, files=file_list)
-        print(response.status_code)
+        if response.status_code == 200:
+            send_log_to_elastic("the files sent successfully")
+        else:
+            send_log_to_elastic("the files didn't sent successfully")
         get_file_basename_and_delete_both_parts_from_directory(file_name_without_suffix)
 
 
@@ -86,7 +89,7 @@ def send_log_to_elastic(message):
 class Handler(FileSystemEventHandler):
 
     @staticmethod
-    def on_any_event(event):
+    def on_created(event):
         if event.is_directory:
             return None
 
