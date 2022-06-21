@@ -40,7 +40,7 @@ def get_file_name_with_suffix(event):
     splited_file_name_with_suffix = full_file_basename.split('.')
     return splited_file_name_with_suffix[0]
 
-
+# change function name
 def get_file_basename_and_delete_both_parts_from_directory(file_base_name):
     for file in os.listdir(DIRECTORY_TO_WATCH):
         file_full_path = os.path.join(DIRECTORY_TO_WATCH, file)
@@ -48,13 +48,13 @@ def get_file_basename_and_delete_both_parts_from_directory(file_base_name):
         if file_name_without_suffix == file_base_name:
             os.remove(file_full_path)
 
-
+# change function name
 def run_over_directory_files():
     for img in os.listdir(DIRECTORY_TO_WATCH):
         img_full_path = os.path.join(DIRECTORY_TO_WATCH, img)
         get_full_path_and_do_everything(img_full_path)
 
-
+# change function name
 def get_full_path_and_do_everything(img_full_path):
     redis_connection = redis.Redis(host=REDIS_HOST, port=REDIS_PORT)
     file_name_without_suffix = get_file_name_with_suffix(img_full_path)[:-2]
@@ -62,6 +62,7 @@ def get_full_path_and_do_everything(img_full_path):
     if redis_connection.exists(file_name_without_suffix) == 0:
         redis_connection.setex(file_name_without_suffix,60, str(img_full_path).split('/')[-1])
     else:
+        #what if i get the same part twice?
         second_file_name = redis_connection.get(file_name_without_suffix)
         is_first_file_or_second = get_file_name_with_suffix(img_full_path)[-1]
         second_file_path = os.path.join(DIRECTORY_TO_WATCH, second_file_name.decode('ascii'))
@@ -78,6 +79,8 @@ def get_full_path_and_do_everything(img_full_path):
 
 
 def send_log_to_elastic(message):
+    # change to global
+    # es name*
     es = Elasticsearch(hosts=['http://20.54.249.197:9200'])
     doc = {
         'message': message,
