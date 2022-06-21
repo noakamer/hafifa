@@ -1,49 +1,38 @@
 import hashlib
 
 from fastapi import FastAPI, UploadFile, File
-from datetime import datetime
 from typing import List
 import uvicorn
 import os
-from os import urandom
 from elasticsearch import Elasticsearch
 from requests import get
 from Crypto.Cipher import AES
+import inotifiScript
+
+DIRECTORY_PATH = "/home/noa/unifiedfiles"
 
 app = FastAPI()
 
 
-def send_log_to_elastic(message):
-    es = Elasticsearch(hosts=['http://20.54.249.197:9200'])
-    doc = {
-        'message': message,
-        'timestamp': datetime.now(),
-    }
-    res = es.index(index="http-logs", body=doc)
-
-
 @app.post("/")
 def index(file: List[UploadFile] = File(...)):
-    path = "/home/noa/unifiedfiles"
-    file_name = file[0].filename
-    splited_name = file_name.split('.')
-    base_name = splited_name[0][:-2]
-    fullpath = os.path.join(path, base_name + '.jpg')
-    file1 = open(fullpath, "wb")
-    file1.write(file[0].file.read())
-    file1.write(file[1].file.read())
+    base_file_name = file[0].filename
+    file_name_without_suffix = base_file_name.split('.')[0][:-2]
+    fullpath = os.path.join(DIRECTORY_PATH, file_name_without_suffix + '.jpg')
+    unified_file = open(fullpath, "wb")
+    unified_file.write(file[0].file.read())
+    unified_file.write(file[1].file.read())
     with open(fullpath, "rb") as f:
-        bytes = f.read()  # read entire file as bytes
+        bytes = f.read()
         readable_hash = hashlib.sha512(bytes).hexdigest()
-    file_for_secret_key = open('/home/noa/tornado.key', "rb")
-    secret_key = file_for_secret_key.read()
+    secret_key = open('/home/noa/tornado.key', "rb").read()
     iv = urandom(16)
     obj = AES.new(secret_key, AES.MODE_CFB, iv)
-    encd = obj.encrypt(readable_hash.encode("utf-8"))
-    file1.write(iv)
-    file1.write(encd)
-    file1.close()
-    send_log_to_elastic("wrote unified file")
+    encoded_hash = obj.encrypt(readable_hash)
+    unified_file.write(iv)
+    unified_file.write(encoded_hash)
+    unified_file.close()
+    inotifiScript.send_log_to_elastic("wrote unified file")
 
 
 if __name__ == "__main__":
