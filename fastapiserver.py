@@ -26,7 +26,7 @@ def index(file: List[UploadFile] = File(...)):
         bytes = f.read()
         readable_hash = hashlib.sha512(bytes).hexdigest()
     secret_key = open('/home/noa/tornado.key', "rb").read()
-    iv = urandom(16)
+    iv = os.urandom(16)
     obj = AES.new(secret_key, AES.MODE_CFB, iv)
     encoded_hash = obj.encrypt(readable_hash)
     unified_file.write(iv)
